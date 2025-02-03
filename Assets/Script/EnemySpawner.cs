@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 using TMPro;
 
 public class EnemySpawner : MonoBehaviour
@@ -10,43 +11,70 @@ public class EnemySpawner : MonoBehaviour
     public Transform targetLocation;
     public GameObject enemyPrefab;
 
-    public float spawnInterval = 3f;
+    public float spawnInterval = 5f; // Time delay before spawning next enemy
     public int playerHP = 10;
     public TextMeshProUGUI hpText;
     public GameObject failUI;
 
+    private bool isSpawning = false;
+
     void Start()
     {
         UpdateHPUI();
-        InvokeRepeating(nameof(SpawnEnemyQuadratic), 0, spawnInterval);
-        InvokeRepeating(nameof(SpawnEnemyCubic), 1.5f, spawnInterval);
+        failUI.SetActive(false);
+        StartCoroutine(SpawnEnemies());
     }
 
-    void SpawnEnemyQuadratic()
+    IEnumerator SpawnEnemies()
     {
-        GameObject enemy = Instantiate(enemyPrefab, spawnPointQuadratic.position, Quaternion.identity);
-        enemy.GetComponent<Enemy>().Init(targetLocation, Enemy.MovementType.Quadratic, this);
-    }
+        while (playerHP > 0)
+        {
+            if (!isSpawning)
+            {
+                isSpawning = true;
 
-    void SpawnEnemyCubic()
-    {
-        GameObject enemy = Instantiate(enemyPrefab, spawnPointCubic.position, Quaternion.identity);
-        enemy.GetComponent<Enemy>().Init(targetLocation, Enemy.MovementType.Cubic, this);
+                // Randomly choose between Quadratic and Cubic spawn points
+                bool useQuadratic = Random.value > 0.5f;
+                Transform spawnPoint = useQuadratic ? spawnPointQuadratic : spawnPointCubic;
+                Enemy.MovementType movementType = useQuadratic ? Enemy.MovementType.Quadratic : Enemy.MovementType.Cubic;
+
+                // Spawn the enemy
+                GameObject enemy = Instantiate(enemyPrefab, spawnPoint.position, Quaternion.identity);
+                enemy.GetComponent<Enemy>().Init(targetLocation, movementType, this);
+
+                // Wait before allowing another spawn
+                yield return new WaitForSeconds(spawnInterval);
+                isSpawning = false;
+            }
+            yield return null;
+        }
     }
 
     public void TakeDamage()
     {
         playerHP--;
         UpdateHPUI();
+
         if (playerHP <= 0)
         {
-            failUI.SetActive(true); // Show fail screen
-            Time.timeScale = 0; // Pause game
+            GameOver();
         }
     }
 
     void UpdateHPUI()
     {
         hpText.text = "HP: " + playerHP;
+    }
+
+    void GameOver()
+    {
+        failUI.SetActive(true);
+        Time.timeScale = 0;
+    }
+
+    public void RestartGame()
+    {
+        Time.timeScale = 1;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

@@ -1,49 +1,71 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Turret : MonoBehaviour
 {
-    public Transform player; // Assign the player's Transform
-    public GameObject projectilePrefab; // The projectile prefab
-    public Transform firePoint; // Where the projectile spawns
-    public float turnSpeed = 5f; // Speed of turret rotation
-    public float detectionRange = 15f; // Range at which turret fires
-    public float fireCooldown = 2f; // Cooldown time between shots
-    public float firingAngleThreshold = 10f; // Angle threshold to fire
+    public GameObject projectilePrefab; // Bullet Prefab
+    public Transform firePoint; // Where bullets spawn
+    public float turnSpeed = 5f; // Rotation speed
+    public float detectionRange = 15f; // How far it detects enemies
+    public float fireCooldown = 2f; // Time between shots
+    public float firingAngleThreshold = 10f; // Only fire if enemy is within this angle
 
+    private Transform targetEnemy; // The enemy it is currently tracking
     private bool canFire = true;
 
     void Update()
     {
-        if (player == null) return;
+        FindClosestEnemy();
 
-        // Calculate the direction to the player
-        Vector3 directionToPlayer = player.position - transform.position;
+        if (targetEnemy == null) return;
 
-        // Rotate turret to track the player
-        Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+        // Rotate turret toward the enemy
+        Vector3 directionToEnemy = targetEnemy.position - transform.position;
+        Quaternion targetRotation = Quaternion.LookRotation(directionToEnemy);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, turnSpeed * Time.deltaTime);
 
-        // Calculate the distance and angle to the player
-        float distanceToPlayer = directionToPlayer.magnitude;
-        float angleToPlayer = Vector3.Angle(transform.forward, directionToPlayer);
+        // Fire only if the enemy is in range and within the angle threshold
+        float distanceToEnemy = directionToEnemy.magnitude;
+        float angleToEnemy = Vector3.Angle(transform.forward, directionToEnemy);
 
-        // Fire only if the player is within range and angle threshold
-        if (distanceToPlayer <= detectionRange && angleToPlayer <= firingAngleThreshold && canFire)
+        if (distanceToEnemy <= detectionRange && angleToEnemy <= firingAngleThreshold && canFire)
         {
             FireProjectile();
         }
+    }
+
+    void FindClosestEnemy()
+    {
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        if (enemies.Length == 0)
+        {
+            targetEnemy = null;
+            return;
+        }
+
+        float closestDistance = Mathf.Infinity;
+        Transform closestEnemy = null;
+
+        foreach (GameObject enemy in enemies)
+        {
+            float distance = Vector3.Distance(transform.position, enemy.transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestEnemy = enemy.transform;
+            }
+        }
+
+        targetEnemy = closestEnemy;
     }
 
     void FireProjectile()
     {
         canFire = false;
 
-        // Instantiate and launch the projectile
         GameObject projectile = Instantiate(projectilePrefab, firePoint.position, firePoint.rotation);
         Rigidbody rb = projectile.GetComponent<Rigidbody>();
-        rb.velocity = firePoint.forward * 20f; // Adjust speed as needed
+        rb.velocity = firePoint.forward * 20f;
 
         StartCoroutine(FireCooldownRoutine());
     }

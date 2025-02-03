@@ -1,25 +1,31 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class Projectile : MonoBehaviour
 {
-    public float lifeTime = 5f; // How long the projectile lives
+    public float speed = 20f;
+    public float lifetime = 3f;
+    public float killDistance = 1f;
+    public int goldReward = 5;
 
     void Start()
     {
-        // Destroy the projectile after its lifetime expires
-        Destroy(gameObject, lifeTime);
+        Destroy(gameObject, lifetime);
+    }
+
+    void Update()
+    {
+        transform.position += transform.forward * speed * Time.deltaTime;
     }
 
     void OnTriggerEnter(Collider other)
     {
-        // Check if the projectile collides with the player
-        if (other.CompareTag("Player"))
+        if (other.CompareTag("Enemy"))
         {
-            // Restart the scene
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            Destroy(other.gameObject);
+            Destroy(gameObject);
         }
     }
+
+
 }
